@@ -163,6 +163,7 @@ static long got_rhsc;		/* root hub status change */
 struct usb_device *devgone;	/* device which was disconnected */
 static long rh_devnum;		/* address of Root Hub endpoint */
 static int found = 0;
+static int USB1164 = 0;
 
 static char job_in_progress = 0;
 
@@ -1929,6 +1930,11 @@ vttusb_int(void)
 			isp116x->rhstatus = isp116x_read_reg32(isp116x, HCRHSTATUS);
 			isp116x->rhport[0] = isp116x_read_reg32(isp116x, HCRHPORT1);
 			isp116x->rhport[1] = isp116x_read_reg32(isp116x, HCRHPORT2);
+                        if(USB1164)
+			{
+				isp116x->rhport[2] = isp116x_read_reg32(isp116x, HCRHPORT3);
+				isp116x->rhport[3] = isp116x_read_reg32(isp116x, HCRHPORT4);
+			}
 
 #ifndef TOSONLY
 			addroottimeout (0L, int_handle_tophalf, 0x1);
@@ -2009,6 +2015,11 @@ isp116x_start(struct isp116x *isp116x)
 	/* Disable ports to avoid race in device enumeration */
 	isp116x_write_reg32(isp116x, HCRHPORT1, RH_PS_CCS);
 	isp116x_write_reg32(isp116x, HCRHPORT2, RH_PS_CCS);
+        if(USB1164)
+	{
+		isp116x_write_reg32(isp116x, HCRHPORT3, RH_PS_CCS);
+		isp116x_write_reg32(isp116x, HCRHPORT4, RH_PS_CCS);
+	}
 
 #ifdef VTTUSB_HW_INT
 	/* Set handler and interrupt for Root Hub Status Change */
@@ -2139,6 +2150,10 @@ isp116x_check_id(struct isp116x *isp116x)
 		ALERT(("invalid chip ID %04x", val));
 		return -1;
 	}
+        if ((val & HCCHIPTYPE_MASK) == HCCHIPTYPE_1164)
+        {
+                USB1164=1;
+        }
 
 	return 0;
 }
@@ -2303,6 +2318,11 @@ long _cdecl init_ucd (struct kentry *k, struct usb_module_api *uapi, char **reas
 	DEBUG (("%s: ucd register ok", __FILE__));
 
 #ifdef TOSONLY
+
+        c_conws("Lightning with");
+        if (!use_blitter) c_conws("out");
+        c_conws(" Blitter support.\r\n");
+	if (USB1164) c_conws("ISP1164 mode.\r\n" );
 	c_conws("vTTusb driver installed");
 	/* terminate and stay resident */
 	if (isHddriverModule()) {

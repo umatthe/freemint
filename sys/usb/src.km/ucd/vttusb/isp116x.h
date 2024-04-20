@@ -166,7 +166,7 @@ volatile unsigned char* const VTTUSB_CPLD_CR = (volatile unsigned char*) 0xF8000
 #define	HCFMNUM		0x0f
 #define	HCLSTHRESH	0x11
 #define	HCRHDESCA	0x12
-#define		RH_A_NDP	(0x3UL << 0)	/* #downstream ports */
+#define		RH_A_NDP	(0x7UL << 0)	/* #downstream ports Mask extended for USB1164 */
 #define		RH_A_PSM	(1UL << 8)	/* power switching mode */
 #define		RH_A_NPS	(1UL << 9)	/* no power switching */
 #define		RH_A_DT		(1UL << 10)	/* device type (mbz) */
@@ -206,6 +206,8 @@ volatile unsigned char* const VTTUSB_CPLD_CR = (volatile unsigned char*) 0xF8000
 #define		RH_PS_PRSC	(1UL << 20)	/* port reset status change */
 #define		HCRHPORT_CLRMASK	(0x1f << 16)
 #define	HCRHPORT2	0x16
+#define	HCRHPORT3	0x17
+#define	HCRHPORT4	0x18
 #define	HCHWCFG		0x20
 #define		HCHWCFG_15KRSEL		(1 << 12)
 #define		HCHWCFG_CLKNOTSTOP	(1 << 11)
@@ -242,6 +244,8 @@ volatile unsigned char* const VTTUSB_CPLD_CR = (volatile unsigned char*) 0xF8000
 #define	HCCHIPID	0x27
 #define		HCCHIPID_MASK		0xff00
 #define		HCCHIPID_MAGIC		0x6100
+#define		HCCHIPTYPE_MASK		0x00ff
+#define		HCCHIPTYPE_1164		0x0044
 #define	HCSCRATCH	0x28
 #define	HCSWRES		0x29
 #define		HCSWRES_MAGIC		0x00f6
@@ -402,7 +406,7 @@ struct isp116x
 	unsigned long rhdesca;
 	unsigned long rhdescb;
 	unsigned long rhstatus;
-	unsigned long rhport[2];
+	unsigned long rhport[4];
 
 	/* Schedule for the current frame */
 	struct isp116x_ep *atl_active;
