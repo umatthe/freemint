@@ -1875,6 +1875,18 @@ int_handle_tophalf(PROC *process, long arg)
 		usb_rh_wakeup(&vttusb_uif);
 	}
 
+	if (isp116x->rhport[2] & RH_PS_CSC)
+	{
+		mdelay(10);
+		usb_rh_wakeup(&vttusb_uif);
+	}
+
+	if (isp116x->rhport[3] & RH_PS_CSC)
+	{
+		mdelay(10);
+		usb_rh_wakeup(&vttusb_uif);
+	}
+
 }
 
 #else // !VTTUSB_HW_INT
@@ -2213,6 +2225,12 @@ usb_lowlevel_init(void *dummy)
 	hook_reset_vector();
 #endif
 
+#ifdef VTTUSB_HW_INT
+        isp116x->rhport[0]=0;
+        isp116x->rhport[1]=0;
+        isp116x->rhport[2]=0;
+        isp116x->rhport[3]=0;
+#endif
 	isp116x_reset(isp116x);
 	isp116x_start(isp116x);
 
