@@ -6,15 +6,12 @@ HEADER =
 COBJS = \
 	usb_printer.c
 
-SSOBJS = \
-#	printer_int.S
+#COBJS += printer_int.S
 
+# for HDDRIVER modules to work, entry.S must be first in TOSCOBJS
 TOSCOBJS = \
-        crtinit.c
+        $(toscommon_srcdir)/entry.S \
+        $(toscommon_srcdir)/setstack.S \
+        $(toscommon_srcdir)/crtinit.c
 
-# for HDDRIVER modules to work, entry.S must be first in TOSSSOBJS
-TOSSSOBJS = \
-        entry.S \
-        setstack.S \
-
-SRCFILES = $(HEADER) $(SSOBJS) $(COBJS) $(TOSCOBJS) $(TOSSSOBJS)
+SRCFILES = $(HEADER) $(COBJS) $(TOSCOBJS)

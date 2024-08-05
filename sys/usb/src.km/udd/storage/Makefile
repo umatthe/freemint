@@ -3,7 +3,7 @@
 #
 
 SHELL = /bin/sh
-SUBDIRS = 
+SUBDIRS =
 
 srcdir = .
 top_srcdir = ../../../..
@@ -12,21 +12,30 @@ toscommon_srcdir = ../../tos-common
 
 default: help
 
-include ./STORAGEDEFS
+# Disable built-in rules
+MAKEFLAGS += --no-builtin-rules
+.SUFFIXES:
 
 include $(top_srcdir)/CONFIGVARS
 include $(top_srcdir)/RULES
 include $(top_srcdir)/PHONY
 
-SGENFILES = crtinit.c delayasm.S entry.S magic.c setstack.S
+include $(srcdir)/STORAGEDEFS
+include $(srcdir)/../../STRIPEXDEFS
 
 all-here: all-targets
 
 # default overwrites
+DEFINITIONS = -D__KERNEL_MODULE__ -DMODULE_NAME=storage $(USBDEFS)
+WARN += -Wcast-qual
 
 # default definitions
 compile_all_dirs = .compile_*
 GENFILES = $(compile_all_dirs) *.udd *.prg
+
+# Those were generated/linked here by older version of this Makefile
+# only keep this rule to ease transition
+GENFILES += crtinit.c delayasm.S entry.S magic.c setstack.S
 
 help:
 	@echo '#'
@@ -42,60 +51,50 @@ help:
 	@echo '# - help'
 	@echo '#'
 
+ALL_TARGETS = $(foreach TARGET, $(storagetargets), .compile_$(TARGET)/$(UDDTARGET_$(TARGET)))
+
+STRIPFLAGS =
 strip:
-	$(STRIP) .compile_prg/*.prg
-	@set fnord $(MAKEFLAGS); amf=$$2; \
-	for i in $(storagetargets); do \
-		if [ "$$i" = "prg" ]; then continue; fi; \
-		(set -x; \
-		($(STRIP) .compile_$$i/*.udd) \
-		|| case "$$amf" in *=*) exit 1;; *k*) fail=yes;; *) exit 1;; esac); \
-	done && test -z "$$fail"
+	$(STRIP) $(filter-out %.prg,$(ALL_TARGETS))
 
-all-targets:
-	@set fnord $(MAKEFLAGS); amf=$$2; \
-	for i in $(storagetargets); do \
-		echo "Making $$i"; \
-		($(MAKE) $$i) \
-		|| case "$$amf" in *=*) exit 1;; *k*) fail=yes;; *) exit 1;; esac; \
-	done && test -z "$$fail"
-
-$(storagetargets):  $(SGENFILES)
-	$(MAKE) buildstorage storage=$@
-
-# Link common TOS files
-crtinit.c: $(toscommon_srcdir)/crtinit.c
-	ln -sf $< $(srcdir)/$@
-delayasm.S: $(toscommon_srcdir)/delayasm.S
-	ln -sf $< $(srcdir)/$@
-entry.S: $(toscommon_srcdir)/entry.S
-	ln -sf $< $(srcdir)/$@
-magic.c: $(toscommon_srcdir)/magic.c
-	ln -sf $< $(srcdir)/$@
-setstack.S: $(toscommon_srcdir)/setstack.S
-	ln -sf $< $(srcdir)/$@
+all-targets: $(ALL_TARGETS)
 
 #
 # multi target stuff
 #
 
-ifneq ($(storage),)
+# for HDDRIVER modules to work, TOSCOBJS must be first in OBJS
+OBJS_prg = $(foreach OBJ, $(notdir $(basename $(TOSCOBJS))), .compile_prg/$(OBJ).o)
 
-compile_dir = .compile_$(storage)
-storagetarget = _stmp_$(storage)
-realtarget = $(storagetarget)
+define TARGET_TEMPLATE
 
-$(storagetarget): $(compile_dir)
-	cd $(compile_dir); $(MAKE) all
+LIBKERN_NAME_$(1) = kern$$(CPU_$(1))
+LIBKERN_DEP_$(1) = $(top_srcdir)/libkern/lib$$(LIBKERN_NAME_$(1)).a
+LIBKERN_$(1) = -L$(top_srcdir)/libkern -l$$(LIBKERN_NAME_$(1))
+DEFINITIONS_$(1) = $(DEFINITIONS) $$(USBDEFS_$(1))
+LIBS_$(1) = $$(LIBKERN_$(1)) -lgcc
+OBJS_$(1) += $(foreach OBJ, $(notdir $(basename $(COBJS))), .compile_$(1)/$(OBJ).o)
+$$(OBJS_$(1)): STORAGEDEFS
 
-$(compile_dir): Makefile.objs
-	$(MKDIR) -p $@
-	$(CP) $< $@/Makefile
+$(1): $(addprefix .compile_,$(1))/$(UDDTARGET_$(1))
 
-else
+$(addprefix .compile_,$(1))/$(UDDTARGET_$(1)): $$(OBJS_$(1)) $$(LIBKERN_DEP_$(1)) $(STRIPEX)
+	$(LD) $$(LDEXTRA_$(1)) -o $$@ $$(CFLAGS_$$(CPU_$(1))) $$(OBJS_$(1)) $$(LIBS_$(1))
+	@case $$@ in *.prg) echo $(STRIPEX) $$@; $(STRIPEX) $$@; ;; esac
 
-realtarget =
+endef
 
+define LIBKERN_TEMPLATE
+$(top_srcdir)/libkern/libkern$(1).a:
+	$(MAKE) -C $(top_srcdir)/libkern libkern$(1).a
+endef
+
+$(foreach TARGET,$(storagetargets),$(eval $(call TARGET_TEMPLATE,$(TARGET))))
+
+$(foreach TARGET,$(storagetargets),$(foreach OBJ,$(COBJS) $(TOSCOBJS),$(eval $(call CC_TEMPLATE,$(TARGET),$(OBJ)))))
+
+$(foreach TARGET,$(cputargets),$(eval $(call LIBKERN_TEMPLATE,$(TARGET))))
+
+ifneq (clean,$(findstring clean,$(MAKECMDGOALS)))
+DEPS_MAGIC := $(shell mkdir -p $(addsuffix /.deps,$(addprefix .compile_,$(storagetargets))) > /dev/null 2>&1 || :)
 endif
-
-buildstorage: $(realtarget)

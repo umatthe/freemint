@@ -3,30 +3,37 @@
 #
 
 SHELL = /bin/sh
-SUBDIRS = 
+SUBDIRS =
 
 srcdir = .
 top_srcdir = ../../../..
 subdir = ehci
-toscommon_srcdir = ../../tos-common
+toscommon_srcdir = $(srcdir)/../../tos-common
 
 default: help
 
-include ./EHCIDEFS
+# Disable built-in rules
+MAKEFLAGS += --no-builtin-rules
+.SUFFIXES:
 
 include $(top_srcdir)/CONFIGVARS
 include $(top_srcdir)/RULES
 include $(top_srcdir)/PHONY
 
-SGENFILES = cache.S crtinit.c delayasm.S entry.S pci_bios.c pci_xbios.S setstack.S
+include $(srcdir)/EHCIDEFS
 
 all-here: all-targets
 
 # default overwrites
+DEFINITIONS = -D__KERNEL_MODULE__ -DMODULE_NAME=ehci $(USBDEFS)
 
 # default definitions
 compile_all_dirs = .compile_*
 GENFILES = $(compile_all_dirs) *.ucd *.prg
+
+# Those were generated/linked here by older version of this Makefile
+# only keep this rule to ease transition
+GENFILES += cache.S crtinit.c delayasm.S entry.S pci_bios.c pci_xbios.S setstack.S
 
 help:
 	@echo '#'
@@ -42,63 +49,48 @@ help:
 	@echo '# - help'
 	@echo '#'
 
+ALL_TARGETS = $(foreach TARGET, $(ehcitargets), .compile_$(TARGET)/$(UCDTARGET_$(TARGET)))
+
+STRIPFLAGS =
 strip:
-	@set fnord $(MAKEFLAGS); amf=$$2; \
-	for i in $(ehcitargets); do \
-		(set -x; \
-        if [ "$$i" = "prg" ]; then ($(STRIP) .compile_$$i/*.prg);continue; fi; \
-		($(STRIP) .compile_$$i/*.ucd) \
-		|| case "$$amf" in *=*) exit 1;; *k*) fail=yes;; *) exit 1;; esac); \
-	done && test -z "$$fail"
+	$(STRIP) $(ALL_TARGETS)
 
-all-targets:
-	@set fnord $(MAKEFLAGS); amf=$$2; \
-	for i in $(ehcitargets); do \
-		echo "Making $$i"; \
-		($(MAKE) $$i) \
-		|| case "$$amf" in *=*) exit 1;; *k*) fail=yes;; *) exit 1;; esac; \
-	done && test -z "$$fail"
-
-$(ehcitargets): $(SGENFILES)
-	$(MAKE) buildehci ehci=$@
-
-# Link common TOS files
-cache.S: $(toscommon_srcdir)/cache.S
-	ln -sf $< $(srcdir)/$@
-crtinit.c: $(toscommon_srcdir)/crtinit.c
-	ln -sf $< $(srcdir)/$@
-delayasm.S: $(toscommon_srcdir)/delayasm.S
-	ln -sf $< $(srcdir)/$@
-entry.S: $(toscommon_srcdir)/entry.S
-	ln -sf $< $(srcdir)/$@
-pci_bios.c: $(toscommon_srcdir)/pci_bios.c
-	ln -sf $< $(srcdir)/$@
-pci_xbios.S: $(toscommon_srcdir)/pci_xbios.S
-	ln -sf $< $(srcdir)/$@
-setstack.S: $(toscommon_srcdir)/setstack.S
-	ln -sf $< $(srcdir)/$@
+all-targets: $(ALL_TARGETS)
 
 #
 # multi target stuff
 #
 
-ifneq ($(ehci),)
+OBJS_prg = $(foreach OBJ, $(notdir $(basename $(TOSCOBJS))), .compile_prg/$(OBJ).o)
 
-compile_dir = .compile_$(ehci)
-ehcitarget = _stmp_$(ehci)
-realtarget = $(ehcitarget)
+define TARGET_TEMPLATE
 
-$(ehcitarget): $(compile_dir)
-	cd $(compile_dir); $(MAKE) all
+LIBKERN_NAME_$(1) = kern$$(CPU_$(1))
+LIBKERN_DEP_$(1) = $(top_srcdir)/libkern/lib$$(LIBKERN_NAME_$(1)).a
+LIBKERN_$(1) = -L$(top_srcdir)/libkern -l$$(LIBKERN_NAME_$(1))
+DEFINITIONS_$(1) = $(DEFINITIONS) $$(USBDEFS_$(1))
+LIBS_$(1) = $$(LIBKERN_$(1)) -lgcc
+OBJS_$(1) += $(foreach OBJ, $(notdir $(basename $(COBJS))), .compile_$(1)/$(OBJ).o)
+$$(OBJS_$(1)): EHCIDEFS
 
-$(compile_dir): Makefile.objs
-	$(MKDIR) -p $@
-	$(CP) $< $@/Makefile
+$(1): $(addprefix .compile_,$(1))/$(UCDTARGET_$(1))
 
-else
+$(addprefix .compile_,$(1))/$(UCDTARGET_$(1)): $$(OBJS_$(1)) $$(LIBKERN_DEP_$(1))
+	$(LD) $$(LDEXTRA_$(1)) -o $$@ $$(CFLAGS_$$(CPU_$(1))) $$(OBJS_$(1)) $$(LIBS_$(1))
 
-realtarget =
+endef
 
+define LIBKERN_TEMPLATE
+$(top_srcdir)/libkern/libkern$(1).a:
+	$(MAKE) -C $(top_srcdir)/libkern libkern$(1).a
+endef
+
+$(foreach TARGET,$(ehcitargets),$(eval $(call TARGET_TEMPLATE,$(TARGET))))
+
+$(foreach TARGET,$(ehcitargets),$(foreach OBJ,$(COBJS) $(TOSCOBJS),$(eval $(call CC_TEMPLATE,$(TARGET),$(OBJ)))))
+
+$(foreach TARGET,$(cputargets),$(eval $(call LIBKERN_TEMPLATE,$(TARGET))))
+
+ifneq (clean,$(findstring clean,$(MAKECMDGOALS)))
+DEPS_MAGIC := $(shell mkdir -p $(addsuffix /.deps,$(addprefix .compile_,$(ehcitargets))) > /dev/null 2>&1 || :)
 endif
-
-buildehci: $(realtarget)

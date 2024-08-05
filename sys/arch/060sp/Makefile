@@ -7,7 +7,7 @@ SUBDIRS =
 
 srcdir = .
 top_srcdir = ../..
-subdir = $(compile_dir)
+subdir = 060sp
 
 default: all
 
@@ -15,29 +15,28 @@ include $(top_srcdir)/CONFIGVARS
 include $(top_srcdir)/RULES
 include $(top_srcdir)/PHONY
 
-all-here: objs fpu060sp.prg
-
 # default overwrites
-INCLUDES = -I$(top_srcdir)
-DEFINITIONS = $(KERNELDEFAULTDEFS) $(KERNELDEFS)
+LDEXTRA = -nostdlib -Wl,--entry,_init
 
-CFLAGS-mint060sp.S = -m68060
+alltargets = 060
 
-cflags = $(kernel_cflags)
-nocflags = $(kernel_nocflags)
+ALL_TARGETS = 060sp.prg
+
+all-here: $(ALL_TARGETS)
 
 # default definitions
-OBJS = $(COBJS:%.c=%.o) $(SOBJS:%.S=%.o)
+compile_all_dirs = .compile_* 
+GENFILES = $(compile_all_dirs) fpsp.S isp.S *.prg
 
-VPATH = ..
+OBJS = $(foreach OBJ, $(notdir $(basename $(COBJS))), .compile_060/$(OBJ).o)
 
-objs: $(OBJS)
-	echo $(OBJS) > $@
+strip:
+	$(STRIP) $(ALL_TARGETS)
 
-fpu060sp.prg: $(OBJS)
-	$(CC) -o $@ $(OBJS) -nostdlib -Wl,--entry -Wl,_init -lgcc
+060sp.prg: $(OBJS)
+	$(LD) $(CFLAGS_060) -o $@ $(OBJS) $(LDEXTRA)
 
-mint060sp.S: fpsp.S isp.S
+.compile_060/mint060sp.o: fpsp.S isp.S
 
 fpsp.S: motorola/fpsp.sa
 	$(SHELL) asm2gas $< > $@
@@ -45,6 +44,8 @@ fpsp.S: motorola/fpsp.sa
 isp.S: motorola/isp.sa
 	$(SHELL) asm2gas $< > $@
 
-# default dependencies
-# must be included last
-include $(top_srcdir)/DEPENDENCIES
+$(foreach TARGET,$(alltargets),$(foreach OBJ,$(COBJS),$(eval $(call CC_TEMPLATE,$(TARGET),$(OBJ)))))
+
+ifneq (clean,$(findstring clean,$(MAKECMDGOALS)))
+DEPS_MAGIC := $(shell mkdir -p $(foreach DIR, $(alltargets), .compile_$(DIR)/.deps) > /dev/null 2>&1 || :)
+endif

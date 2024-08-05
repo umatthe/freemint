@@ -12,20 +12,17 @@ COBJS = \
 	polling.c \
 	usb_scsidrv.c \
 	usb_storage.c \
-	xhdi.c
-
-SSOBJS = \
+	xhdi.c \
 	vectors.S \
 	xhdiasm.S
 
+# for HDDRIVER modules to work, entry.S must be first in TOSCOBJS
 TOSCOBJS = \
-	crtinit.c \
-	magic.c
+	$(toscommon_srcdir)/entry.S \
+	$(toscommon_srcdir)/delayasm.S \
+	$(toscommon_srcdir)/setstack.S \
+	storage_int.S \
+	$(toscommon_srcdir)/crtinit.c \
+	$(toscommon_srcdir)/magic.c
 
-TOSSSOBJS = \
-	delayasm.S \
-	entry.S \
-	setstack.S \
-	storage_int.S
-
-SRCFILES = $(HEADER) $(SSOBJS) $(COBJS) $(TOSCOBJS) $(TOSSSOBJS)
+SRCFILES = $(HEADER) $(COBJS) $(TOSCOBJS)

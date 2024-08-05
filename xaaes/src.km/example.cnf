@@ -10,9 +10,8 @@
 #
 # Example: Include any external file into configuration
 #
-#include u:/c/video.cnf
-#include c:\video.cnf
-#include C:\video.cnf
+#include u:/${BOOTDRIVE}/video.cnf
+#include ${BOOTDRIVE}:\video.cnf
 
 ######################################################################
 # eiffel_support [true|false]
@@ -67,7 +66,7 @@
 # examples:
 #
 #logfile = ""
-#logfile = C:\xaaes.log
+#logfile = ${BOOTDRIVE}:\xaaes.log
 #logfile = my.log
 
 #####################################################################
@@ -289,7 +288,7 @@
 # The following are environment variables you are strongly adviced
 # to set as soon as possible to ensure smooth operation of the
 # system;
-setenv ACCPATH		C:\
+setenv ACCPATH		${BOOTDRIVE}:\
 setenv ACCEXT		ACC,ACX
 setenv GEMEXT		PRG,APP,GTP,OVL,SYS
 setenv TOSEXT		TOS,TTP
@@ -702,6 +701,13 @@ redraw_timeout = 2000
 # If true difference between resource-filesize and size given
 # in rsc-header is no error.
 #
+#--------------------------------------------------------------------
+#  submenu_indicator = <value>  default: 0
+#
+# Controls how the attachment of a submenu is indicated.
+#
+# 0 = Use "right arrow" (0x03)
+# 1 = Greater than sign ">" (Classic XaAES)
 #######################################################################
 #
 # This default setting will make XaAES look closer to n.aes, but
@@ -819,8 +825,8 @@ kill_wo_question = "ST-Guide"
 # accpath   = <path>   # path from which accs are loaded
 # launchpath = <path>   # initial path for launcher
 #
-clipboard = c:\clipbrd\
-accpath   = c:\
+clipboard = ${BOOTDRIVE}:\clipbrd\
+accpath   = ${BOOTDRIVE}:\
 launchpath  = u:\opt\GEM
 
 #####################################################################

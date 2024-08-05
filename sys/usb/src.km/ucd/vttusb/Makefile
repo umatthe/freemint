@@ -3,73 +3,100 @@
 #
 
 SHELL = /bin/sh
-SUBDIRS = 
+SUBDIRS =
 
 srcdir = .
 top_srcdir = ../../../..
 subdir = vttusb
-toscommon_srcdir = ../../tos-common
+toscommon_srcdir = $(srcdir)/../../tos-common
 
-default:
+default: help
 
-include ./VTTUSBDEFS
+# Disable built-in rules
+MAKEFLAGS += --no-builtin-rules
+.SUFFIXES:
 
 include $(top_srcdir)/CONFIGVARS
 include $(top_srcdir)/RULES
 include $(top_srcdir)/PHONY
 
-SGENFILES = crtinit.c delayasm.S entry.S setstack.S
+include $(srcdir)/VTTUSBDEFS
+include $(srcdir)/../../STRIPEXDEFS
 
 all-here: all-targets
 
 # default overwrites
+DEFINITIONS = -D__KERNEL_MODULE__ -DMODULE_NAME=blitz $(USBDEFS)
+WARN += -Wcast-qual
 
 # default definitions
 compile_all_dirs = .compile_*
 GENFILES = $(compile_all_dirs) *.ucd *.prg
 
-all-targets:
-	@set fnord $(MAKEFLAGS); amf=$$2; \
-	for i in $(vttusbtargets); do \
-		echo "Making $$i"; \
-		($(MAKE) $$i) \
-		|| case "$$amf" in *=*) exit 1;; *k*) fail=yes;; *) exit 1;; esac; \
-	done && test -z "$$fail"
+# Those were generated/linked here by older version of this Makefile
+# only keep this rule to ease transition
+GENFILES += crtinit.c delayasm.S entry.S setstack.S
 
-$(vttusbtargets): $(SGENFILES)
-	$(MAKE) buildvttusb vttusb=$@
+help:
+	@echo '#'
+	@echo '# targets:'
+	@echo '# --------'
+	@echo '# - all'
+	@echo '# - $(vttusbtargets)'
+	@echo '#'
+	@echo '# - clean'
+	@echo '# - distclean'
+	@echo '# - bakclean'
+	@echo '# - strip'
+	@echo '# - help'
+	@echo '#'
 
-# Link common TOS files
-crtinit.c: $(toscommon_srcdir)/crtinit.c
-	ln -sf $< $(srcdir)/$@
-delayasm.S: $(toscommon_srcdir)/delayasm.S
-	ln -sf $< $(srcdir)/$@
-entry.S: $(toscommon_srcdir)/entry.S
-	ln -sf $< $(srcdir)/$@
-setstack.S: $(toscommon_srcdir)/setstack.S
-	ln -sf $< $(srcdir)/$@
+ALL_TARGETS = $(foreach TARGET, $(vttusbtargets), .compile_$(TARGET)/$(UCDTARGET_$(TARGET)))
+
+STRIPFLAGS =
+strip:
+	$(STRIP) $(filter-out %.prg,$(ALL_TARGETS))
+
+all-targets: $(ALL_TARGETS)
 
 #
 # multi target stuff
 #
 
-ifneq ($(vttusb),)
+# for HDDRIVER modules to work, TOSCOBJS must be first in OBJS
+OBJS_prg = $(foreach OBJ, $(notdir $(basename $(TOSCOBJS))), .compile_prg/$(OBJ).o)
+OBJS_p30 = $(foreach OBJ, $(notdir $(basename $(TOSCOBJS))), .compile_p30/$(OBJ).o)
+OBJS_pst = $(foreach OBJ, $(notdir $(basename $(TOSCOBJS))), .compile_pst/$(OBJ).o)
 
-compile_dir = .compile_$(vttusb)
-vttusbtarget = _stmp_$(vttusb)
-realtarget = $(vttusbtarget)
+define TARGET_TEMPLATE
 
-$(vttusbtarget): $(compile_dir)
-	cd $(compile_dir); $(MAKE) all
+LIBKERN_NAME_$(1) = kern$$(CPU_$(1))
+LIBKERN_DEP_$(1) = $(top_srcdir)/libkern/lib$$(LIBKERN_NAME_$(1)).a
+LIBKERN_$(1) = -L$(top_srcdir)/libkern -l$$(LIBKERN_NAME_$(1))
+DEFINITIONS_$(1) = $(DEFINITIONS) $$(USBDEFS_$(1))
+LIBS_$(1) = $$(LIBKERN_$(1)) -lgcc
+OBJS_$(1) += $(foreach OBJ, $(notdir $(basename $(COBJS))), .compile_$(1)/$(OBJ).o)
+$$(OBJS_$(1)): VTTUSBDEFS
 
-$(compile_dir): Makefile.objs
-	$(MKDIR) -p $@
-	$(CP) $< $@/Makefile
+$(1): $(addprefix .compile_,$(1))/$(UCDTARGET_$(1))
 
-else
+$(addprefix .compile_,$(1))/$(UCDTARGET_$(1)): $$(OBJS_$(1)) $$(LIBKERN_DEP_$(1)) $(STRIPEX)
+	$(LD) $$(LDEXTRA_$(1)) -o $$@ $$(CFLAGS_$$(CPU_$(1))) $$(OBJS_$(1)) $$(LIBS_$(1))
+	@case $$@ in *.prg) echo $(STRIPEX) $$@; $(STRIPEX) $$@; ;; esac
 
-realtarget =
+endef
 
+define LIBKERN_TEMPLATE
+$(top_srcdir)/libkern/libkern$(1).a:
+	$(MAKE) -C $(top_srcdir)/libkern libkern$(1).a
+endef
+
+$(foreach TARGET,$(vttusbtargets),$(eval $(call TARGET_TEMPLATE,$(TARGET))))
+
+$(foreach TARGET,$(vttusbtargets),$(foreach OBJ,$(COBJS) $(TOSCOBJS),$(eval $(call CC_TEMPLATE,$(TARGET),$(OBJ)))))
+
+$(foreach TARGET,$(cputargets),$(eval $(call LIBKERN_TEMPLATE,$(TARGET))))
+
+ifneq (clean,$(findstring clean,$(MAKECMDGOALS)))
+DEPS_MAGIC := $(shell mkdir -p $(addsuffix /.deps,$(addprefix .compile_,$(vttusbtargets))) > /dev/null 2>&1 || :)
 endif
-
-buildvttusb: $(realtarget)

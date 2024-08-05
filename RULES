@@ -7,23 +7,50 @@ include $(srcdir)/SRCFILES
 include $(srcdir)/EXTRAFILES
 include $(srcdir)/MISCFILES
 
-ifdef CPU
-ifeq ($(CPU),v4e)
-MODEL = -mcpu=5475
-else
-MODEL = -m68$(CPU)
-endif
-else
-# leave empty/default
-MODEL =
-endif
+#
+# mapping of CPU names to CFLAGS
+#
+MODEL_000 = -m68000
+MODEL_020 = -m68020
+MODEL_02060 = -m68020-60
+MODEL_030 = -m68030
+MODEL_040 = -m68040
+MODEL_060 = -m68060
+MODEL_v4e = -mcpu=5475
+
+#
+# mapping of TARGET names to CPU
+#
+CPU_deb = 02060
+CPU_000 = 000
+CPU_020 = 020
+CPU_02060 = 02060
+CPU_030 = 030
+CPU_040 = 040
+CPU_060 = 060
+CPU_col = v4e
+CPU_ara = 040
+CPU_080 = 040
+CPU_mil = 02060
+CPU_hat = 000
+CPU_hat030 = 030
+
+
+CFLAGS_000 = $(MODEL_000) $(INCLUDES) $(DEFINITIONS) $(GENERAL) $(OPTS) $(WARN)
+CFLAGS_020 = $(MODEL_020) $(INCLUDES) $(DEFINITIONS) $(GENERAL) $(OPTS) $(WARN)
+CFLAGS_02060 = $(MODEL_02060) $(INCLUDES) $(DEFINITIONS) $(GENERAL) $(OPTS) $(WARN)
+CFLAGS_030 = $(MODEL_030) $(INCLUDES) $(DEFINITIONS) $(GENERAL) $(OPTS) $(WARN)
+CFLAGS_040 = $(MODEL_040) $(INCLUDES) $(DEFINITIONS) $(GENERAL) $(OPTS) $(WARN)
+CFLAGS_060 = $(MODEL_060) $(INCLUDES) $(DEFINITIONS) $(GENERAL) $(OPTS) $(WARN)
+CFLAGS_v4e = $(MODEL_v4e) $(INCLUDES) $(DEFINITIONS) $(GENERAL) $(OPTS) $(WARN)
+
 
 all: all-recursive all-here
 
 clean:: clean-recursive
 	rm -f *.o lib*.a *.tmp
 	rm -f core report nohup.out errlog
-	test "$(compile_all_dirs)" = "" || rm -f $(compile_all_dirs)/*.o $(compile_all_dirs)/lib*.a
+	test "$(compile_all_dirs)" = "" || rm -f $(addsuffix /*.o,$(compile_all_dirs)) $(addsuffix /lib*.a,$(compile_all_dirs))
 	test "$(GENFILES)" = "" || rm -rf $(GENFILES)
 
 bakclean:: bakclean-recursive
@@ -76,3 +103,23 @@ install-recursive uninstall-recursive dist-recursive strip-recursive::
 	  (cd $$subdir && $(MAKE) -r $$target) \
 	   || case "$$amf" in *=*) exit 1;; *k*) fail=yes;; *) exit 1;; esac; \
 	done && test -z "$$fail"
+
+# use this when the first argument is a kernel target
+define CC_TEMPLATE
+.compile_$(1)/$(notdir $(basename $(2))).o: $(2)
+	@echo "$(CC) $(INCLUDES) $$(DEFINITIONS_$(1)) $$(MODEL_$$(CPU_$(1))) $(GENERAL) $(OPTS) $(WARN) $(CPPFLAGS) $$(CFLAGS-$(1)-$$(<F)) -c $$< -o $$@"
+	@$(CC) $(INCLUDES) $$(DEFINITIONS_$(1)) $$(MODEL_$$(CPU_$(1))) $(GENERAL) $(OPTS) $(WARN) $(CPPFLAGS) $$(CFLAGS-$(1)-$$(<F)) -Wp,-MD,.compile_$(1)/.deps/$(notdir $(2)).P -Wp,-MT,$$@ -c $$< -o $$@
+
+-include .compile_$(1)/.deps/$(notdir $(2)).P
+
+endef
+
+# use this when the first argument is a cpu target
+define CPU_TEMPLATE
+.compile_$(1)/$(notdir $(basename $(2))).o: $(2)
+	@echo "$(CC) $(INCLUDES) $$(DEFINITIONS_$(1)) $$(MODEL_$(1)) $(GENERAL) $(OPTS) $(WARN) $(CPPFLAGS) -c $$< -o $$@"
+	$(CC) $(INCLUDES) $$(DEFINITIONS_$(1)) $$(MODEL_$(1)) $(GENERAL) $(OPTS) $(WARN) $(CPPFLAGS) -Wp,-MD,.compile_$(1)/.deps/$(notdir $(2)).P -Wp,-MT,$$@ -c $$< -o $$@
+
+-include .compile_$(1)/.deps/$(notdir $(2)).P
+
+endef

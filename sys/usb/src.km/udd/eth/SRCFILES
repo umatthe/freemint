@@ -6,13 +6,9 @@ HEADER =
 COBJS = \
 	usb_ether.c
 
-SSOBJS =
-
 TOSCOBJS = \
-	crtinit.c
+	$(toscommon_srcdir)/entry.S \
+	$(toscommon_srcdir)/setstack.S \
+	$(toscommon_srcdir)/crtinit.c
 
-TOSSSOBJS = \
-	entry.S \
-	setstack.S \
-
-SRCFILES = $(HEADER) $(SSOBJS) $(COBJS)
+SRCFILES = $(HEADER) $(COBJS) $(TOSCOBJS)

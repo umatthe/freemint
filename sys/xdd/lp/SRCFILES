@@ -2,7 +2,6 @@
 # the files that should go only into source distributions.
 
 HEADER = lp.h
-COBJS = lp.c
-SSOBJS = centr.S
+COBJS = lp.c centr.S
 
-SRCFILES = $(HEADER) $(COBJS) $(SSOBJS)
+SRCFILES = $(HEADER) $(COBJS)

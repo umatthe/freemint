@@ -6,17 +6,13 @@ HEADER = \
 	ethernat_int.h
 
 COBJS = \
-	isp116x-hcd.c
-
-TOSCOBJS = \
-	crtinit.c
-
-SSOBJS = \
+	isp116x-hcd.c \
 	ethernat_int.S
 
-TOSSSOBJS = \
-	entry.S \
-	setstack.S \
-	delayasm.S
+TOSCOBJS = \
+	$(toscommon_srcdir)/crtinit.c \
+	$(toscommon_srcdir)/entry.S \
+	$(toscommon_srcdir)/setstack.S \
+	$(toscommon_srcdir)/delayasm.S
 
-SRCFILES = $(HEADER) $(COBJS) $(SSOBJS) $(TOSCOBJS) $(TOSSSOBJS)
+SRCFILES = $(HEADER) $(COBJS) $(TOSCOBJS)

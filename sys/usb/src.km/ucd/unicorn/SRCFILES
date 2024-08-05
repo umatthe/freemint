@@ -5,17 +5,14 @@ HEADER = \
 	sl811.h
 
 COBJS = \
-	sl811-hcd.c
-
-TOSCOBJS = \
-        crtinit.c
-
-SSOBJS = \
+	sl811-hcd.c \
 	unicorn_int.S
 
-TOSSSOBJS = \
-        delayasm.S \
-        entry.S \
-        setstack.S
+# for HDDRIVER modules to work, entry.S must be first in TOSCOBJS
+TOSCOBJS = \
+        $(toscommon_srcdir)/entry.S \
+        $(toscommon_srcdir)/setstack.S \
+        $(toscommon_srcdir)/delayasm.S \
+        $(toscommon_srcdir)/crtinit.c
 
-SRCFILES = $(HEADER) $(SSOBJS) $(COBJS) $(TOSCOBJS) $(TOSSSOBJS)
+SRCFILES = $(HEADER) $(COBJS) $(TOSCOBJS)
