@@ -119,7 +119,6 @@ XA_menu_bar(int lock, struct xa_client *client, AESPB *pb)
 				}
 				/* HR: std_menu is now a complete widget_tree :-) */
 				mwt->is_menu = true;
-				mwt->menu_line = true;
 
 				if (swap)
 				{
@@ -816,9 +815,9 @@ XA_menu_attach(int lock, struct xa_client *client, AESPB *pb)
 
 	DIAG((D_menu, client, "menu_attach %d", pb->intin[0]));
 
-	pb->intout[0] = 1;
+	pb->intout[0] = 1;	/* non-error return code by default */
 
-	if( pb->addrin[1] == 0 )
+	if( pb->addrin[1] == 0 )	/* mdata NULL? */
 	{
 		if( md != ME_INQUIRE )
 			md = ME_REMOVE;
@@ -903,22 +902,24 @@ XA_menu_attach(int lock, struct xa_client *client, AESPB *pb)
 unsigned long
 XA_menu_istart(int lock, struct xa_client *client, AESPB *pb)
 {
+	XA_TREE *wt;
+	XA_MENU_ATTACHMENT *a;
 	CONTROL(3,1,1)
 
 	DIAG((D_menu,client,"menu_istart"));
 
 	pb->intout[0] = 0;
 
-	XA_TREE *wt = obtree_to_wt(client, (OBJECT *)pb->addrin[0]);
+	wt = obtree_to_wt(client, (OBJECT *)pb->addrin[0]);
 	assert(wt);
 
-	XA_MENU_ATTACHMENT *a = client->attach;
+	a = client->attach;
 	while (a)
 	{
 		if ((a->wt == wt) && (pb->intin[1] == a->menu))
 			break;
 
-		a = client->attach->next;
+		a = a->next;
 	}
 
 	if (a)

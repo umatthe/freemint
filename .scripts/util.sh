@@ -49,6 +49,7 @@ copy_m68k_modules() {
 	cp "$SRC/sys/sockets/xif/asix_${TARGET}.xif" "$SYSDIR/asix.xix"
 	cp "$SRC/sys/sockets/xif/picowifi_${TARGET}.xif" "$SYSDIR/picowifi.xix"
 	cp "$SRC/sys/sockets/xif/plip_${TARGET}.xif" "$SYSDIR/plip.xif"
+	cp "$SRC/sys/sockets/xif/slip_${TARGET}.xif" "$SYSDIR/slip.xif"
 	cp "$SRC/sys/xdd/audio/.compile_$TARGET/audiodev.xdd" "$SYSDIR"
 	cp "$SRC/sys/xdd/flop-raw/.compile_$TARGET/flop_raw.xdd" "$SYSDIR"
 }
@@ -306,6 +307,7 @@ copy_fonts() {
 	mv "$FONTSDIR/cs/cp1250_08.txt" "$FONTSDIR/cs/cp125008.txt"
 	mv "$FONTSDIR/cs/cp1250_09.txt" "$FONTSDIR/cs/cp125009.txt"
 	mv "$FONTSDIR/cs/cp1250_10.txt" "$FONTSDIR/cs/cp125010.txt"
+	mv "$FONTSDIR/pl/ISO-8859-2.fnt" "$FONTSDIR/pl/iso88592.fnt"
 }
 
 copy_tbl() {
@@ -317,11 +319,6 @@ copy_tbl() {
 copy_sysroot() {
 	local SYSROOT="$1"
 	local TARGET="$2"
-	local MINTDIR="$3"
-
-	# temporary workaround
-	mkdir -p "$MINTDIR"
-	cp "$SRC/tools/sysdir/.compile_$TARGET/sysdir.tos" "$MINTDIR"
 
 	mkdir -p "$SYSROOT/opt/GEM"
 
@@ -395,20 +392,25 @@ copy_guides() {
 create_filesystem() {
 	mkdir -p "$SYSROOT"/{bin,etc,root,tmp,var/run}
 	local coreutils="cat cp env ln ls md5sum mkdir mv rm"
+	local e2fsprogs="e2fsck mke2fs tune2fs"
 
 	if [ "$CPU_TARGET" = "000" ]
 	then
 		cp "$BASH_DIR/bash000.ttp" "$SYSROOT/bin/bash"
 		for exe in $coreutils; do cp "$COREUTILS_DIR/${exe}000.ttp" "$SYSROOT/bin/${exe}"; done
+		for exe in $e2fsprogs; do cp "$E2FSPROGS_DIR/${exe}000.ttp" "$SYSROOT/bin/${exe}"; done
 	elif [ "$CPU_TARGET" = "col" ]
 	then
 		cp "$BASH_DIR/bashv4e.ttp" "$SYSROOT/bin/bash"
 		for exe in $coreutils; do cp "$COREUTILS_DIR/${exe}v4e.ttp" "$SYSROOT/bin/${exe}"; done
+		for exe in $e2fsprogs; do cp "$E2FSPROGS_DIR/${exe}v4e.ttp" "$SYSROOT/bin/${exe}"; done
 	else
 		# 02060, 030, 040, 060
 		cp "$BASH_DIR/bash020.ttp" "$SYSROOT/bin/bash"
 		for exe in $coreutils; do cp "$COREUTILS_DIR/${exe}020.ttp" "$SYSROOT/bin/${exe}"; done
+		for exe in $e2fsprogs; do cp "$E2FSPROGS_DIR/${exe}020.ttp" "$SYSROOT/bin/${exe}"; done
 	fi
+	cp "$E2FSPROGS_DIR/mke2fs.conf" "$SYSROOT/etc"
 
 	echo "root:x:0:0::/root:/bin/bash" > "$SYSROOT/etc/passwd"
 
@@ -424,7 +426,6 @@ create_filesystem() {
 	cp -r "$TERADESK_DIR" "$SYSROOT/opt/GEM"
 	cp -r "$QED_DIR" "$SYSROOT/opt/GEM"
 	cp -r "$COPS_DIR" "$SYSROOT/opt/GEM"
-	cp -r "$HYPVIEW_DIR" "$SYSROOT/opt/GEM"
 	cp -r "$TOSWIN2_DIR" "$SYSROOT/opt/GEM"
 	
 	# can't go to copy_guides because that is called for all builds

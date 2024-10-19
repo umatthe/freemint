@@ -14,10 +14,10 @@ then
 	export TERADESK_DIR="$SCRIPT_DIR/teradesk"
 	export BASH_DIR="$SCRIPT_DIR/bash"
 	export COREUTILS_DIR="$SCRIPT_DIR/coreutils"
+	export E2FSPROGS_DIR="$SCRIPT_DIR/e2fsprogs"
 	export QED_DIR="$SCRIPT_DIR/qed"
 	export DOSFSTOOLS_DIR="$SCRIPT_DIR/dosfstools"
 	export COPS_DIR="$SCRIPT_DIR/cops"
-	export HYPVIEW_DIR="$SCRIPT_DIR/hypview"
 	export TOSWIN2_DIR="$SCRIPT_DIR/toswin2"
 	TMP="$SCRIPT_DIR/.tmp"
 

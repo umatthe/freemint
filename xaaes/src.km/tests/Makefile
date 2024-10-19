@@ -41,6 +41,8 @@ TEST_PROGRAMS = \
 	shel_wrm.prg \
 	shel_wrx.prg \
 	tfail.prg \
+	toolbar.prg \
+	tbarmenu.prg \
 	wind_get.tos \
 	windcre2.prg \
 	windcre3.prg \
