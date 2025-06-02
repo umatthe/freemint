@@ -265,7 +265,7 @@ post_cevent(struct xa_client *client,
 		{
 			DIAGS(("kmalloc(%ld) failed, out of memory?", (long)sizeof(*c)));
 		}
-		Unblock(client, 1, 3);
+		Unblock(client, 1);
 	}
 }
 
@@ -331,7 +331,7 @@ dispatch_cevent(struct xa_client *client)
 		(*ce->funct)(0, ce, false);
 		kfree(ce);
 
-// 		ret = client->cevnt_count + 1;
+//		ret = client->cevnt_count + 1;
 		ret = (volatile short)client->cevnt_count;
 	}
 	return ret;
@@ -366,13 +366,13 @@ do_block(struct xa_client *client)
 
 #if ALT_CTRL_APP_OPS
 void
-Block(struct xa_client *client, int which)
+Block(struct xa_client *client)
 {
-	(*client->block)(client, which);
+	(*client->block)(client);
 }
 #endif
 void
-cBlock(struct xa_client *client, int which)
+cBlock(struct xa_client *client)
 {
 	while (!client->usr_evnt && (client->irdrw_msg || client->cevnt_count))
 	{
@@ -388,7 +388,7 @@ cBlock(struct xa_client *client, int which)
 	{
 		if (client->usr_evnt & 1)
 		{
-			cancel_evnt_multi(client, 1);
+			cancel_evnt_multi(client);
 			cancel_mutimeout(client);
 		}
 		else
@@ -401,7 +401,7 @@ cBlock(struct xa_client *client, int which)
 	 */
 	if (check_queued_events(client))
 	{
- 		cancel_mutimeout(client);
+		cancel_mutimeout(client);
 		return;
 	}
 
@@ -413,7 +413,7 @@ cBlock(struct xa_client *client, int which)
 	 */
 	while (!client->usr_evnt)
 	{
-		DIAG((D_kern, client, "[%d]Blocked %s", which, c_owner(client)));
+		DIAG((D_kern, client, "Blocked %s", c_owner(client)));
 
 		do_block(client);
 
@@ -436,8 +436,8 @@ cBlock(struct xa_client *client, int which)
 		{
 			if (client->usr_evnt & 1)
 			{
-				cancel_evnt_multi(client, 2);
- 				cancel_mutimeout(client);
+				cancel_evnt_multi(client);
+				cancel_mutimeout(client);
 			}
 			else
 				client->usr_evnt = 0;
@@ -452,7 +452,7 @@ cBlock(struct xa_client *client, int which)
 	}
 	if (client->usr_evnt & 1)
 	{
-		cancel_evnt_multi(client, 3);
+		cancel_evnt_multi(client);
 		cancel_mutimeout(client);
 	}
 	else
@@ -460,7 +460,7 @@ cBlock(struct xa_client *client, int which)
 }
 
 static void
-iBlock(struct xa_client *client, int which)
+iBlock(struct xa_client *client)
 {
 	XAESPB *a = C.Hlp_pb;
 
@@ -478,7 +478,7 @@ iBlock(struct xa_client *client, int which)
 	{
 		if (client->usr_evnt & 1)
 		{
-			cancel_evnt_multi(client, 4);
+			cancel_evnt_multi(client);
 			cancel_mutimeout(client);
 		}
 		else
@@ -510,7 +510,7 @@ iBlock(struct xa_client *client, int which)
 	 */
 	while (!client->usr_evnt)
 	{
-		DIAG((D_kern, client, "[%d]Blocked %s", which, c_owner(client)));
+		DIAG((D_kern, client, "Blocked %s", c_owner(client)));
 
 		if (client->tp_term)
 		{
@@ -538,8 +538,8 @@ iBlock(struct xa_client *client, int which)
 		{
 			if (client->usr_evnt & 1)
 			{
-				cancel_evnt_multi(client, 5);
- 				cancel_mutimeout(client);
+				cancel_evnt_multi(client);
+				cancel_mutimeout(client);
 			}
 			else
 				client->usr_evnt = 0;
@@ -560,7 +560,7 @@ iBlock(struct xa_client *client, int which)
 	}
 	if (client->usr_evnt & 1)
 	{
-		cancel_evnt_multi(client, 6);
+		cancel_evnt_multi(client);
 		cancel_mutimeout(client);
 	}
 	else
@@ -568,17 +568,17 @@ iBlock(struct xa_client *client, int which)
 }
 
 void
-Unblock(struct xa_client *client, unsigned long value, int which)
+Unblock(struct xa_client *client, unsigned long value)
 {
 	/* the following served as a excellent safeguard on the
 	 * internal consistency of the event handling mechanisms.
 	 */
- 	if (client == C.Aes)
- 		wake(IO_Q, client->sleeplock);
- 	else
+	if (client == C.Aes)
+		wake(IO_Q, client->sleeplock);
+	else
 	{
 		if (value == XA_OK)
-			cancel_evnt_multi(client, 7);
+			cancel_evnt_multi(client);
 
 		if (client->blocktype == XABT_SELECT)
 			wakeselect(client->p);
@@ -586,7 +586,7 @@ Unblock(struct xa_client *client, unsigned long value, int which)
 			wake(IO_Q, client->sleeplock); //(long)client);
 	}
 
-	DIAG((D_kern, client,"[%d]Unblocked %s 0x%lx", which, client->proc_name, value));
+	DIAG((D_kern, client,"Unblocked %s 0x%lx", client->proc_name, value));
 }
 
 static void *svmotv = NULL;
@@ -1119,7 +1119,7 @@ static const char aesthread_name[] = "aesthred";
 static const char aeshlp_name[] = "XaSYS";
 
 static void
-aesthread_block(struct xa_client *client, int which)
+aesthread_block(struct xa_client *client)
 {
 	while ((client->irdrw_msg || client->cevnt_count))
 	{
@@ -1151,7 +1151,7 @@ aesthread_entry(void *c)
 
 	for (;;)
 	{
-		aesthread_block(client, 0);
+		aesthread_block(client);
 		if (client->tp_term)
 			break;
 	}
@@ -1184,7 +1184,7 @@ helpthread_entry(void *c)
 		if ((pb = kmalloc(pbsize)))
 		{
 			volatile short *t = &client->tp_term;
-// 			union msg_buf *msgb;
+//			union msg_buf *msgb;
 
 			bzero(pb, pbsize);
 
@@ -1220,8 +1220,8 @@ helpthread_entry(void *c)
 				pb->addrin[0] = (long)pb->msg;
 				client->waiting_pb = (AESPB *)pb;
 				client->waiting_for = MU_MESAG|XAWAIT_MULTI;
-// 				BLOG((true, "enter block %lx", client->waiting_pb->addrin[0]));
-				(*client->block)(client, 0);
+//				BLOG((true, "enter block %lx", client->waiting_pb->addrin[0]));
+				(*client->block)(client);
 				/*if (*t)
 				{
 					break;
@@ -1345,7 +1345,7 @@ sshutdown_timeout(struct proc *p, long arg)
 						else
 						{
 							flag = client;
-							Unblock(client, 1, 4);
+							Unblock(client, 1);
 						}
 					}
 				}
@@ -1554,7 +1554,7 @@ CE_start_apps(int lock, struct c_event *ce, short cancel)
 	 *
 	 * XXX it's just very ugly todo this so
 	 */
-// 	get_curproc()->p_fd->ofiles[C.KBD_dev]->flags |= O_HEAD;
+//	get_curproc()->p_fd->ofiles[C.KBD_dev]->flags |= O_HEAD;
 
 	/* next try
 	 * switching tty device into RAW mode
@@ -1585,7 +1585,7 @@ void set_tty_mode( short md )
 	r = f_cntl(C.KBD_dev, (long)&sg, TIOCSETN);
 	//KERNEL_DEBUG("fcntl(TIOCSETN) -> %li", r);
 	assert(r == 0);
- 	get_curproc()->p_fd->ofiles[C.KBD_dev]->flags |= O_HEAD;
+	get_curproc()->p_fd->ofiles[C.KBD_dev]->flags |= O_HEAD;
 #endif
 }
 
@@ -2052,7 +2052,7 @@ setup_common(void)
 	p_signal(SIGCHLD,  (long) sigchld);
 
 	d_setdrv('u' - 'a');
- 	d_setpath("/");
+	d_setpath("/");
 
 }
 
@@ -2136,8 +2136,8 @@ k_exit(int wait)
 	{
 		BLOG((false, "Closing adi_mouse"));
 		adi_close(G.adi_mouse);
-// 		adi_unregister(G.adi_mouse);
-// 		G.adi_mouse = NULL;
+//		adi_unregister(G.adi_mouse);
+//		G.adi_mouse = NULL;
 	}
 
 

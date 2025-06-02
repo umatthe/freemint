@@ -326,7 +326,7 @@ init_client(int lock, bool sysclient)
 	/* Reset the AES messages pending list for our new application */
 	client->msg = NULL;
 	/* Initially, client isn't waiting on any event types */
-	cancel_evnt_multi(client, 0);
+	cancel_evnt_multi(client);
 	/* Initial settings for the clients mouse cursor */
 	client->mouse = ARROW;		/* Default client mouse cursor is an arrow */
 	client->mouse_form = NULL;
@@ -1293,8 +1293,8 @@ short info_tab[][4] =
 	/*10 AES shell support */
 	{
 		0x3f07,		/* supported extended bits + highest mode */
-		0,		/* 0 launch mode */
-		0,		/* 1 launch mode <-- */
+		0,		/* shel_write (0) makes previous shel_write calls invalid (false) */
+		1,		/* shel_write (1) launches program immediately (true) */
 		1		/* ARGV style via wiscr to shel_write supported */
 	},
 	/*11 window functions
