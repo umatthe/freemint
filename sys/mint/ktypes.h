@@ -19,7 +19,10 @@
 # include "kcompiler.h"
 
 
+/* false/true are reserved keywords in C 23 */
+#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 202311L
 typedef enum { false = (0 == 1), true  = (1 == 1) } bool;
+#endif
 
 typedef unsigned char			uchar;
 typedef unsigned short			ushort;
@@ -53,7 +56,7 @@ typedef unsigned long long		__u64;
 # error unsigned long long		__u64;
 # endif
 
-/* more conform tyepnames */
+/* more conform typenames */
 typedef __s8  int8_t;
 typedef __s16 int16_t;
 typedef __s32 int32_t;
@@ -65,7 +68,7 @@ typedef __u32 u_int32_t;
 typedef __u64 u_int64_t;
 
 
-typedef long _cdecl (*Func)();
+typedef long _cdecl (*Func)(void);
 
 /* forward declarations
  */
@@ -75,12 +78,12 @@ struct module_callback;
 struct proc_ext;
 struct sigaction;
 struct socket;
+typedef int64_t time64_t;
 
 
 /* forward declarations: file.h
  */
 typedef struct fcookie		fcookie;
-typedef struct timeval		TIMEVAL;
 typedef struct dtabuf		DTABUF;
 typedef struct dirstruct	DIR;
 typedef struct xattr		XATTR;

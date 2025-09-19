@@ -585,10 +585,10 @@ foundtimer:
 #define _SC_CLK_TCK	5	/* clock ticks */
 #define _SC_PAGE_SIZE	6	/* pagesize */
 #define _SC_PAGESIZE	_SC_PAGE_SIZE	
-#define _SC_PHYS_PAGES	7	/* physical pages */
+#define _SC_AVPHYS_PAGES	7	/* available physical pages */
 #define _SC_GETPW_R_SIZE_MAX	8 /* passwd buffer size */
 #define _SC_GETGR_R_SIZE_MAX	9 /* group buffer size */
-#define _SC_AVPHYS_PAGES	10	/* available physical pages */
+#define _SC_PHYS_PAGES	10	/* physical pages */
 
 long _cdecl
 sys_s_ysconf (int which)
@@ -603,10 +603,10 @@ sys_s_ysconf (int which)
 		case  _SC_CHILD_MAX:	return UNLIMITED;
 		case  _SC_CLK_TCK:	return HZ;
 		case  _SC_PAGE_SIZE:	return PAGESIZE;
-		case  _SC_PHYS_PAGES:	return totalphysmem() / PAGESIZE;
+		case  _SC_AVPHYS_PAGES:	return freephysmem() / PAGESIZE;
 		case  _SC_GETPW_R_SIZE_MAX:	return 1024;
 		case  _SC_GETGR_R_SIZE_MAX:	return 1024;
-		case  _SC_AVPHYS_PAGES:	return freephysmem() / PAGESIZE;		
+		case  _SC_PHYS_PAGES:	return totalphysmem() / PAGESIZE;
 		default:	return ENOSYS;
 	}
 }
@@ -616,7 +616,7 @@ sys_s_ysconf (int which)
  * the kernel does (i.e. u:\pipe\alert, if it's available
  */
 long _cdecl
-sys_s_alert (char *str)
+sys_s_alert (const char *str)
 {
 	/* how's this for confusing code? _ALERT tries to format the
 	 * string as an alert box; if it fails, we let the full-fledged
@@ -677,7 +677,7 @@ shutdown(void)
 		{
 			if (p->wait_q != ZOMBIE_Q && p->wait_q != TSR_Q)
 			{
-				if (p->wait_q && p->wait_q != READY_Q)
+				if (p->wait_q != CURPROC_Q && p->wait_q != READY_Q)
 				{
 					ushort sr = spl7();
 					rm_q(p->wait_q, p);
@@ -715,12 +715,12 @@ shutdown(void)
 		{
 			if (fs->fsflags & FS_EXT_1)
 			{
-				FORCE("Unmounting %c: ...", 'A'+i);
+				FORCE("Unmounting %c: ...", DriveToLetter(i));
 				xfs_unmount(fs, i);
 			}
 			else
 			{
-				DEBUG(("Invalidate %c: ...", 'A'+i));
+				DEBUG(("Invalidate %c: ...", DriveToLetter(i)));
 				xfs_dskchng(fs, i, 1);
 			}
 		}

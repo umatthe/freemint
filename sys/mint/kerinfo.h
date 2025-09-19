@@ -19,6 +19,8 @@
 # include "kcompiler.h"
 # include "ktypes.h"
 # include "block_IO.h"		/* eXtended kernelinterface */
+# include "biosvecs.h"
+# include "dosvecs.h"
 
 struct basepage;
 struct nf_ops;
@@ -66,8 +68,8 @@ struct kerinfo
 	 * ------------
 	 * NOTE: these tables are definitely READ ONLY!!!!
 	 */
-	Func	*bios_tab;	/* pointer to the BIOS entry points */
-	Func	*dos_tab;	/* pointer to the GEMDOS entry points */
+	bios_vecs	*bios_tab;	/* pointer to the BIOS entry points */
+	dos_vecs	*dos_tab;	/* pointer to the GEMDOS entry points */
 
 
 	/* media change vector
@@ -88,8 +90,8 @@ struct kerinfo
 	 */
 	void	_cdecl (*trace)(const char *, ...) __attribute__((format(printf, 1, 2)));
 	void	_cdecl (*debug)(const char *, ...) __attribute__((format(printf, 1, 2)));
-	void	_cdecl (*alert)(const char *, ...);
-	EXITING _cdecl (*fatal)(const char *, ...) NORETURN;
+	void	_cdecl (*alert)(const char *, ...) __attribute__((format(printf, 1, 2)));
+	EXITING _cdecl (*fatal)(const char *, ...) NORETURN __attribute__((format(printf, 1, 2)));
 
 
 	/* memory allocation functions
@@ -270,7 +272,7 @@ struct kerinfo
 	BIO	*bio;		/* buffered block I/O, see block_IO.doc */
 
 	/* version 1 extension */
-	TIMEVAL	*xtime;		/* pointer to current kernel time - UTC */
+	struct timeval	*xtime;		/* pointer to current kernel time - UTC */
 
 	long	res;
 

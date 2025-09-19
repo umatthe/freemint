@@ -110,10 +110,10 @@ sys_b_mediach (int dev)
 
 /* getbpb: get BIOS parameter block
  */
-long _cdecl
+struct bpb *_cdecl
 sys_b_getbpb (int dev)
 {
-	union { long r; short *ptr; } r;
+	union { long r; short *ptr; struct bpb *bpb; } r;
 
 	/* we can't trust the Getbpb routine to accurately save all registers,
 	 * so we do it ourselves
@@ -149,7 +149,7 @@ sys_b_getbpb (int dev)
 #endif
 	}
 
-	return r.r;
+	return r.bpb;
 }
 
 /* rwabs: various disk stuff
@@ -169,7 +169,7 @@ sys_b_rwabs (int rwflag, void *buffer, int number, int recno, int dev, long lrec
 
 		if (dlockproc [dev] && dlockproc [dev] != p)
 		{
-			DEBUG (("Rwabs: device %c is locked", dev+'A'));
+			DEBUG (("Rwabs: device %c is locked", DriveToLetter(dev)));
 			return ELOCKED;
 		}
 	}

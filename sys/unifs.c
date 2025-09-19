@@ -38,6 +38,7 @@
 # include "procfs.h"
 # include "ramfs.h"
 # include "shmfs.h"
+# include "fatfs.h"
 
 # include "proc.h"
 
@@ -885,14 +886,9 @@ uni_fscntl(fcookie *dir, const char *name, int cmd, long arg)
 			}
 			if (r == ENOTDIR && name[0] && !name[1]) {
 				/* one letter drive mapping check */
-				drvmap_dev_no = tolower(name[0]);
+				drvmap_dev_no = DriveFromLetter(name[0]);
 
-				/* convert the ASCII value to the drive number */
-				drvmap_dev_no = ( drvmap_dev_no < 'a' || drvmap_dev_no > 'z'
-								  ? ( drvmap_dev_no < '1' || drvmap_dev_no > '6' ? -1 : drvmap_dev_no - '1' + 26 )
-								  : drvmap_dev_no - 'a' );
-
-				if (drvmap_dev_no == -1)
+				if (drvmap_dev_no < 0)
 					return r;
 
 				/* check whether it is not already mounted */
@@ -1063,6 +1059,21 @@ uni_fscntl(fcookie *dir, const char *name, int cmd, long arg)
 			}
 			return E_OK;
 		}
+		case VFAT_CNFDFLN:
+			{
+				FILESYS *fs;
+
+				for (fs = active_fs; fs; fs = fs->next)
+					if (fs == &fatfs_filesys)
+					{
+						fc.dev = 0;
+						fc.fs = fs;
+						fc.index = 0;
+						fc.aux = 0;
+						return fs->fscntl(&fc, NULL, cmd, arg);
+					}
+			}
+			break;
 		default:
 		{
 			/* see if we should just pass this along to another file system */

@@ -58,6 +58,8 @@
 #include <mint/osbind.h>
 #define ct60_vmalloc(mode,value) (unsigned long)trap_14_wwl((short)(0xc60e),(short)(mode),(unsigned long)(value))
 
+#define DriveToLetter(d) ((d) < 26 ? 'A' + (d) : (d) - 26 + '1')
+
 /*
  * From main.c
  */
@@ -717,7 +719,7 @@ driver_init (void)
 	if((ferror = Fopen("svethlan.inf",0)) < 0) { /* Try first in sysdir */
 		short sysdrv = *((short *) 0x446);	/* get the boot drive number */
 		char svethlan_inf[] = "A:\\SVETHLAN.INF";
-		svethlan_inf[0] = 'A' + sysdrv;
+		svethlan_inf[0] = DriveToLetter(sysdrv);
 
 		ferror = Fopen(svethlan_inf,0);/* otherwise in boot drive's root */
 	}
@@ -1074,7 +1076,7 @@ static void svethlana_service (struct netif * nif, uint32 int_src)
 											 ETH_RX_BD_TOOLONG | ETH_RX_BD_SHORT | ETH_RX_BD_CRCERR | ETH_RX_BD_LATECOL))
 				{
 					//At least one of the above error flags was set
-					ksprintf (message, "Slot %hu RX errorflags: 0x%08lx \r\n", i, eth_rx_bd[i].len_ctrl);
+					ksprintf (message, "Slot %d RX errorflags: 0x%08lx \r\n", i, eth_rx_bd[i].len_ctrl);
 					c_conws (message);
 
 					//Clear error flags

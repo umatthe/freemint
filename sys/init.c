@@ -356,10 +356,10 @@ init (void)
 	}
 # endif
 	sysdrv = *((short *) 0x446);	/* get the boot drive number */
-	bootdrv[0] = drv_list[sysdrv];
+	bootdrv[0] = DriveToLetter(sysdrv);
 
 # ifdef VERBOSE_BOOT
-	boot_printf(MSG_init_sysdrv_is, drv_list[sysdrv]);
+	boot_printf(MSG_init_sysdrv_is, bootdrv[0]);
 # endif
 
 # ifdef WITH_MMU_SUPPORT
@@ -578,7 +578,7 @@ init (void)
 		}
 
 		ksprintf(temp, sizeof(temp), "u:/a%s", sysdir);
-		temp[3] = (char)(sysdrv + 'a');
+		temp[3] = DriveToLetter(sysdrv);
 
 		strcpy(sysdir, temp);
 	}
@@ -879,7 +879,7 @@ run_auto_prgs (void)
 	sys_d_setdrv(sysdrv);	/* set above, right after Super() */
 	sys_d_setpath("/");
 
-	dta = (DTABUF *) sys_f_getdta();
+	dta = sys_f_getdta();
 	r = sys_f_sfirst("/auto/*.prg", 0);
 	while (r >= 0)
 	{
@@ -1016,7 +1016,7 @@ _mint_setenv(BASEPAGE *bp, const char *var, const char *value)
 		}
 
 		bp->p_env = new_env;
-		sys_m_free((long)env_str);
+		sys_m_free(env_str);
 	}
 
 	/* Append new variable at the end */
@@ -1106,7 +1106,7 @@ mint_thread(void *arg)
 	stop_and_ask();
 
 	/* we default to U:\ before loading the cnf  */
-	sys_d_setdrv('u' - 'a');
+	sys_d_setdrv(UNIDRV);
  	sys_d_setpath("/");
 
 	/* load the MINT.CNF configuration file */
@@ -1143,7 +1143,7 @@ mint_thread(void *arg)
 				/* We have to preserve the current directory,
 				 * as d_lock() will reset it to \
 				 */
-				cwd[0] = i + ((i < 26) ? 'A' : '1' - 26);
+				cwd[0] = DriveToLetter(i);
 				if (sys_d_getcwd(cwd + 2, i + 1, PATH_MAX - 2) != E_OK)
 				{
 					continue;
@@ -1156,7 +1156,7 @@ mint_thread(void *arg)
 			}
 		}
 
-		(void) sys_m_free((long)cwd);
+		(void) sys_m_free(cwd);
 	}
 # endif
 
@@ -1183,7 +1183,7 @@ mint_thread(void *arg)
 	 * so it can properly load the accessories.
 	 * Otherwise, default to U:\ before starting INIT.
 	 */
-	sys_d_setdrv(init_is_gem ? sysdrv : 'u' - 'a');
+	sys_d_setdrv(init_is_gem ? sysdrv : UNIDRV);
  	sys_d_setpath("/");
 	stop_and_ask();
 

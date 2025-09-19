@@ -43,6 +43,9 @@
 
 # include "kcompiler.h"
 # include "ktypes.h"
+# include "mint/xbiosvecs.h"
+# include "mint/biosvecs.h"
+# include "mint/dosvecs.h"
 
 /* forward declarations */
 struct basepage;
@@ -1081,9 +1084,9 @@ struct kentry
 	unsigned long	dos_version;	/* running GEMDOS version */
 
 	/* OS functions */
-	Func *vec_dos;			/* DOS entry points */
-	Func *vec_bios;			/* BIOS entry points */
-	Func *vec_xbios;		/* XBIOS entry points */
+	dos_vecs *vec_dos;		/* DOS entry points */
+	bios_vecs *vec_bios;	/* BIOS entry points */
+	xbios_vecs *vec_xbios;	/* XBIOS entry points */
 
 	/* kernel exported function vectors */
 	struct kentry_mch vec_mch;
@@ -1117,9 +1120,9 @@ struct kentry
 	\
 	0x00000040, \
 	\
-	dos_tab, \
-	bios_tab, \
-	xbios_tab, \
+	&dos_tab, \
+	&bios_tab, \
+	&xbios_tab, \
 	\
 	DEFAULTS_kentry_mch, \
 	DEFAULTS_kentry_proc, \

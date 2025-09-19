@@ -63,14 +63,22 @@ static char *state_name(char state)
 {
 	static char *state_names[] = {
 		"Run   ", "Ready ", "Wait  ", "I/O   ", "Zombie", "TSR   ", "Stop  " };
-	static char states[] = { 0xff, 0x01, 0x20, 0x21, 0x22, 0x02, 0x24 };
+	static char states[] = {
+		0,
+		0x01, /* FA_RDONLY */
+		0x20, /* FA_CHANGED */
+		0x21, /* FA_CHANGED | FA_RDONLY */
+		0x22, /* FA_CHANGED | FA_HIDDEN */
+		0x02, /* FA_HIDDEN */
+		0x24  /* FA_CHANGED | FA_SYSTEM */
+	};
 	int i;
 	
 	for (i = 0; i < 7; i++)
 		if (states[i] == state)
 			return state_names[i];
 
-	return NULL;
+	return "#ERR#";
 }
 
 /* Process Control Block - part of MiNT's proc struct */
@@ -124,6 +132,9 @@ int main(int argc, char *argv[])
 
 	if (d >= 0 )
 	{
+#ifdef PROC_0_1_FIX
+		int found_0 = false, found_1 = false;
+#endif
 		char procfullname[22];
 		char procname[14];
 
@@ -137,9 +148,18 @@ int main(int argc, char *argv[])
 			struct PCB *pcbptr, pcb;
 			static char cmd[128], name[128];
 			struct ploadinfo pl = { 127, cmd, name };
+			char *c;
 
 #ifdef PROC_0_1_FIX
-			/* Workaround for hidden proc 0 & 1 in /proc */
+			/*
+			 * Workaround for hidden proc 0 & 1 in /proc:
+			 * - old kernels had a bug that caused Dreaddir only to return
+			 *   the process list, but no "." or ".." entries
+			 * - kernels from around 2020-2025 had a bug that returned those
+			 *   entries, but skipped the first 2 processes instead
+			 * - in recent kernels, Dreaddir() returns all entries,
+			 *   including "." and ".."
+			 */
 			if (!strcmp(procname, "."))
 				strcpy(procname, "MiNT.000");
 
@@ -157,7 +177,7 @@ int main(int argc, char *argv[])
 				return error(f, "Could not open %s: %d.\n", procfullname, f);
 
 			if ((err = Fcntl(f, &pcbptr, 0x5001)) < 0) /* PPROCADDR */
-				return error(err, "Fcntl failed: %d\n", err);
+				return error(err, "Fcntl %s failed: %d\n", procname, err);
 
 			if (Fseek((long) pcbptr, f, 0) < 0)
 				return error(0, "Fseek failed.\n");
@@ -177,7 +197,7 @@ int main(int argc, char *argv[])
 				/* Workaround for hidden proc 0 & 1 in /proc */
 				if (*procname == '.')
 				{
-					char *c = strrchr(pl.fname, '\\');
+					c = strrchr(pl.fname, '\\');
 					
 					if (!c)
 						c = strrchr(pl.fname, '/');
@@ -190,44 +210,69 @@ int main(int argc, char *argv[])
 					strncpy(procname, c, 13);
 				}
 #endif	
-				if (strchr(procname, '.'))
-					*strchr(procname, '.') = '\0';
 			}
+			if ((c = strchr(procname, '.')) != NULL)
+				*c = '\0';
 
-			if (!strcmp(pl.cmdlin, pl.fname)) /* Workaround for kernel-threads */
+			/* Workaround for kernel-threads */
+			if (!strcmp(pl.cmdlin, pl.fname))
 				pl.cmdlin[1] = '\0';
 
-			state = state_name(attr.st_attr == 0 ? 0xff : attr.st_attr);
-
+			/*
+			 * Workaround for SLBs, which have their filename at the first byte of the cmdline
+			 * and also return the name of the loading application in the filename
+			 */
+			if (pl.cmdlin[0] == '\0' && pl.cmdlin[1] == ':')
+				pl.cmdlin[1] = '\0';
+			if (!(pl.cmdlin[0] >= 'A' && pl.cmdlin[0] <= 'Z' && pl.cmdlin[1] == ':'))
 			{
-				long time, hour, min, sec, frac;
-				
-				time = pcb.systime + pcb.usrtime;
-				hour = (time / 1000 / 60 / 60);
-				min  = (time / 1000 / 60) % 60;
-				sec  = (time / 1000) % 60;
-				frac = (time % 1000) / 10;
+				strcpy(pl.cmdlin, pl.cmdlin + 1);
+			} else
+			{
+				if (fullpath)
+					strcpy(pl.fname, pl.cmdlin);
+				pl.cmdlin[0] = '\0';
+			}
 
-				if (hour)
+			state = state_name(attr.st_attr);
+
+#ifdef PROC_0_1_FIX
+			if ( !((pcb.pid == 0 && found_0) || (pcb.pid == 1 && found_1)) )
+#endif
+			{
+				long time;
+				int hour, min, sec, frac;
+				char sep;
+
+				time = pcb.systime + pcb.usrtime;
+				hour = (int)((time / 1000 / 60 / 60));
+				min  = (int)((time / 1000 / 60) % 60);
+				sec  = (int)((time / 1000) % 60);
+				frac = (int)((time % 1000) / 10);
+
+#ifdef PROC_0_1_FIX
+				if (pcb.pid == 0)
+					found_0 = true;
+				
+				if (pcb.pid == 1)
+					found_1 = true;
+#endif
+
+				sep = ':';
+				if (hour == 0)
 				{
-					printf("%03d  %03d %3d   %3d   %s %8ld %02d:%02d:%02d  %s %s\n",
-						pcb.pid, pcb.ppid, pcb.pri, pcb.curpri, state ? state : "#ERR#",
-						attr.st_size,
-						(int) hour, (int) min, (int) sec,
-						fullpath ? pl.fname : procname,
-						&pl.cmdlin[1]
-					);
+					hour = min;
+					min = sec;
+					sec = frac;
+					sep = '.';
 				}
-				else
-				{
-					printf("%03d  %03d %3d   %3d   %s %8ld %02d:%02d.%02d  %s %s\n",
-						pcb.pid, pcb.ppid, pcb.pri, pcb.curpri, state ? state : "#ERR#",
-						attr.st_size,
-						(int) min, (int) sec, (int) frac,
-						fullpath ? pl.fname : procname,
-						&pl.cmdlin[1]
-					);
-				}
+				printf("%03d  %03d %3d   %3d   %s %8ld %02d:%02d%c%02d  %s %s\n",
+					pcb.pid, pcb.ppid, pcb.pri, pcb.curpri, state,
+					attr.st_size,
+					hour, min, sep, sec,
+					fullpath ? pl.fname : procname,
+					pl.cmdlin
+				);
 			}
 
 			Fclose(f);

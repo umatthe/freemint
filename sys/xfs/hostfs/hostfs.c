@@ -33,6 +33,9 @@
 #include "mint/kerinfo.h"
 #include "mint/arch/nf_ops.h"
 
+#undef DriveToLetter
+#define DriveToLetter(d) ((d) < 26 ? 'a' + (d) : (d) - 26 + '1')
+
 
 /*
  * filesystem basic description
@@ -61,7 +64,7 @@ FILESYS *hostfs_mount_drives(FILESYS *fs)
 		/* search the 1st log 1 bit position -> drv_number */
 		while( ! (drv_mask & 1) ) { drv_number++; drv_mask>>=1; }
 
-		mount_point[3] = drv_number+'a';
+		mount_point[3] = DriveToLetter(drv_number);
 		mount_point[4] = '\0';
 
 		DEBUG(("hostfs: drive: %d", drv_number));
@@ -116,7 +119,7 @@ FILESYS *hostfs_mount_drives(FILESYS *fs)
 
 	/* Install the filesystem */
 	r = d_cntl (FS_INSTALL, "u:\\", (long) &hostfs_descr);
-	DEBUG(("hostfs: Dcntl(FS_INSTALL) descr=%x", &hostfs_descr));
+	DEBUG(("hostfs: Dcntl(FS_INSTALL) descr=%p", &hostfs_descr));
 	if (r != 0 && r != (long)KERNEL)
 	{
 		DEBUG(("Return value was %li", r));
@@ -141,7 +144,7 @@ FILESYS *hostfs_mount_drives(FILESYS *fs)
 			/* ready */
 			succ = 0;
 
-			mount_point[3] = drv_number+'a';
+			mount_point[3] = DriveToLetter(drv_number);
 			mount_point[4] = '\0';
 
 			DEBUG(("hostfs: drive: %d", drv_number));
@@ -175,7 +178,7 @@ FILESYS *hostfs_mount_drives(FILESYS *fs)
 				/* unmount */
 				r = d_cntl(FS_UNMOUNT, mount_point,
 						   (long) &hostfs_descr);
-				DEBUG(("hostfs: Dcntl(FS_UNMOUNT) descr=%x", &hostfs_descr));
+				DEBUG(("hostfs: Dcntl(FS_UNMOUNT) descr=%p", &hostfs_descr));
 				if ( r < 0 ) {
 					DEBUG(("hostfs: return value was %li", r));
 					/* Can't uninstall, because unmount failed */
@@ -195,7 +198,7 @@ FILESYS *hostfs_mount_drives(FILESYS *fs)
 
 	/* Something went wrong here -> uninstall the filesystem */
 	r = d_cntl(FS_UNINSTALL, "u:\\", (long) &hostfs_descr);
-	DEBUG(("hostfs: Dcntl(FS_UNINSTALL) descr=%x", &hostfs_descr));
+	DEBUG(("hostfs: Dcntl(FS_UNINSTALL) descr=%p", &hostfs_descr));
 	if ( r < 0 ) {
 		DEBUG(("hostfs: return value was %li", r));
 		/* Can't say NULL,

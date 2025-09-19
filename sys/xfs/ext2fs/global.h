@@ -32,15 +32,18 @@
 # include "mint/proc.h"
 # include "mint/time.h"
 
+/*
+ * Define EXT2FS_DEBUG to produce debug messages
+ */
+# if 0
+# define EXT2FS_DEBUG	1
+# endif
+
 # include "ext2.h"
 
 
 /* debug section
  */
-
-# if 0
-# define EXT2FS_DEBUG	1
-# endif
 
 # ifdef EXT2FS_DEBUG
 
@@ -66,6 +69,7 @@
  * memory leaks
  */
 
+#ifdef EXT2FS_DEBUG
 extern ulong memory;
 
 INLINE void *
@@ -79,7 +83,8 @@ own_kmalloc (register long size)
 INLINE void
 own_kfree (void *dst, register long size)
 {
-	memory -= size;
+	if (dst)
+		memory -= size;
 	kfree (dst);
 }
 
@@ -88,6 +93,10 @@ own_kfree (void *dst, register long size)
 
 # define kmalloc	own_kmalloc
 # define kfree		own_kfree
+#else
+#undef kfree
+#define kfree(p, s) (*KERNEL->kfree)(p)
+#endif
 
 
 /* global ext2 specials

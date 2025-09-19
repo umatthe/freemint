@@ -655,7 +655,7 @@ tos_root(int drv, fcookie *fc)
 {
 	struct tindex *ti;
 	
-	DEBUG (("tos_root [%c]: enter", 'A'+drv));
+	DEBUG (("tos_root [%c]: enter", DriveToLetter(drv)));
 	
 	if (fatfs_config (drv, FATFS_DRV, ASK))
 	{
@@ -669,7 +669,7 @@ tos_root(int drv, fcookie *fc)
 		return ENXIO;
 	}
 	
-	ksprintf(tmpbuf, sizeof (tmpbuf), "%c:", drv+'A');
+	ksprintf(tmpbuf, sizeof (tmpbuf), "%c:", DriveToLetter(drv));
 	fc->fs = &tos_filesys;
 	fc->dev = drv;
 	ti = tstrindex(tmpbuf);
@@ -1678,7 +1678,7 @@ tos_dskchng(int drv, int mode)
 
 	UNUSED(mode);
 
-	dlet = 'A' + drv;
+	dlet = DriveToLetter(drv);
 MEDIA_DB(("tos_dskchng(%c)", dlet));
 	ti = gl_ti;
 	for (i = 0; i < NUM_INDICES; i++, ti++) {
@@ -1795,13 +1795,13 @@ static long  _cdecl
 Newgetbpb(int d)
 {
 	if (d == chdrv) {
-MEDIA_DB(("Newgetbpb(%c)", d+'A'));
+MEDIA_DB(("Newgetbpb(%c)", DriveToLetter(d)));
 if (Oldgetbpb == Newgetbpb) {
 MEDIA_DB(("AARGH!!! BAD BPBs"));
 }
-		*((Func *)0x472L) = Oldgetbpb;
-		*((Func *)0x476L) = Oldrwabs;
-		*((Func *)0x47eL) = Oldmediach;
+		*((Func *)0x472L) = (Func) Oldgetbpb;
+		*((Func *)0x476L) = (Func) Oldrwabs;
+		*((Func *)0x47eL) = (Func) Oldmediach;
 	}
 	return (*Oldgetbpb)(d);
 }
@@ -1810,7 +1810,7 @@ static long _cdecl
 Newmediach(int d)
 {
 	if (d == chdrv) {
-MEDIA_DB(("Newmediach(%c)", d+'A'));
+MEDIA_DB(("Newmediach(%c)", DriveToLetter(d)));
 		return 2;
 	}
 	return (*Oldmediach)(d);
@@ -1835,24 +1835,24 @@ force_mediach(int d)
 	long r;
 	static char fname[] = "X:\\X";
 #endif
-	TRACE(("tosfs: disk change drive %c", d+'A'));
-MEDIA_DB(("forcing media change on %c", d+'A'));
+	TRACE(("tosfs: disk change drive %c", DriveToLetter(d)));
+MEDIA_DB(("forcing media change on %c", DriveToLetter(d)));
 
 	chdrv = d;
-	Oldrwabs = *((Func *)0x476L);
-	Oldgetbpb = *((Func *)0x472L);
-	Oldmediach = *((Func *)0x47eL);
+	Oldrwabs = *((long _cdecl (**) (int, void *, int, int, int, long))0x476L);
+	Oldgetbpb = *((long _cdecl (**) (int))0x472L);
+	Oldmediach = *((long _cdecl (**) (int))0x47eL);
 
 	if (Oldrwabs == Newrwabs || Oldgetbpb == Newgetbpb ||
 	    Oldmediach == Newmediach) {
 		FORCE("tosfs: error in media change code");
 	} else {
-		*((Func *)0x476L) = Newrwabs;
-		*((Func *)0x472L) = Newgetbpb;
-		*((Func *)0x47eL) = Newmediach;
+		*((Func *)0x476L) = (Func) Newrwabs;
+		*((Func *)0x472L) = (Func) Newgetbpb;
+		*((Func *)0x47eL) = (Func) Newmediach;
 	}
 
-	fname[0] = d + 'A';
+	fname[0] = DriveToLetter(d);
 MEDIA_DB(("calling GEMDOS"));
 #ifdef FSFIRST_MEDIACH
 	(void)ROM_Fsfirst(fname, FA_LABEL);
@@ -1862,11 +1862,11 @@ MEDIA_DB(("calling GEMDOS"));
 #endif
 MEDIA_DB(("done calling GEMDOS"));
 	drvchanged[d] = 0;
-	if ( *((Func *)0x476L) == Newrwabs ) {
+	if ( *((long _cdecl (**) (int, void *, int, int, int, long))0x476L) == Newrwabs ) {
 		DEBUG(("WARNING: media change not performed correctly"));
-		*((Func *)0x472L) = Oldgetbpb;
-		*((Func *)0x476L) = Oldrwabs;
-		*((Func *)0x47eL) = Oldmediach;
+		*((Func *)0x472L) = (Func) Oldgetbpb;
+		*((Func *)0x476L) = (Func) Oldrwabs;
+		*((Func *)0x47eL) = (Func) Oldmediach;
 	}
 }
 
