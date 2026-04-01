@@ -85,6 +85,7 @@ char *DRIVER_COMPANY = "FreeMiNT list";
 extern char *drv_version;
 #if TOSONLY
 extern short MagiC;
+extern long EmuTOS;
 #endif
 
 /* --- External functions ---*/
@@ -143,6 +144,17 @@ sys_XHDOSLimits(ushort which,ulong limit)
 			dl_clusts = (*ptr)->max_ncl;
 			dl_maxsec = (*ptr)->max_nsec;
 			dl_clusts12 = MAX_FAT12_CLUSTERS;
+		}
+		else if (EmuTOS > 0)                            /* EmuTOS 1.0.0 or higher */
+		{
+			dl_secsiz = 32768L;
+			dl_minfat = 1L;
+			dl_maxfat = 2L;
+			dl_minspc = 1L;
+			dl_maxspc = 64L;
+			dl_clusts = 65524L;
+			dl_maxsec = 4193536L;
+			dl_clusts12 = 4084L;
 		}
 		else
 		{
@@ -282,7 +294,8 @@ sys_XHDOSLimits(ushort which,ulong limit)
 	/* Rebuild BPB based on XHDOSLimit changes */
 	if (limit != 0) {
 		for (i = 0; i < dl_maxdrives; i++) {
-			usb_build_bpb(&pun_usb.bpb[i], NULL);
+			if (my_drvbits & 1L << i)
+				usb_build_bpb(&pun_usb.bpb[i], NULL);
 		}
 	}
 
@@ -549,11 +562,8 @@ long
 XHDOSLimits(ushort which, ulong limit)
 {
 	if (limit != 0) {
-		(void)sys_XHDOSLimits(which, limit);
-	}
-
-	if (next_handler) {
-		return next_handler(XHDOSLIMITS, which, limit);
+		if (next_handler)
+			next_handler(XHDOSLIMITS, which, limit);
 	}
 
 	return sys_XHDOSLimits(which, limit);
